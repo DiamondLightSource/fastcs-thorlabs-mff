@@ -1,0 +1,20 @@
+# Changes here will be overwritten by Copier
+_commit: 5.0.2
+_src_path: https://github.com/DiamondLightSource/python-copier-template.git
+author_email: thomas.kane@diamond.ac.uk
+author_name: Thomas Kane
+component_lifecycle: experimental
+component_owner: group:default/beamine-controls
+component_type: service
+description: FastCS support for Thorlabs motorized filter flip mount
+distribution_name: fastcs-thorlabs-mff
+docker: true
+docker_debug: false
+docs_type: README
+git_platform: github.com
+github_org: DiamondLightSource
+package_name: fastcs_thorlabs_mff
+pypi: false
+repo_name: fastcs-thorlabs-mff
+strict_typing: false
+type_checker: pyright

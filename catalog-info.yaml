@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: fastcs-thorlabs-mff
+  title: fastcs-thorlabs-mff
+  description: FastCS support for Thorlabs motorized filter flip mount
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/beamine-controls
