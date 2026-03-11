@@ -1,17 +1,68 @@
-import fastcs
+import logging
+from functools import cache
+from pathlib import Path
 
-from fastcs_thorlabs_mff.controllers import (
-    ThorlabsMFF,
-)
+import typer
+import yaml
+from fastcs.launch import FastCS
+from fastcs.transports.epics import EpicsGUIOptions, EpicsIOCOptions
+from fastcs.transports.epics.ca.transport import EpicsCATransport
+
+from fastcs_thorlabs_mff.config import Config
+from fastcs_thorlabs_mff.controllers import ThorlabsMFF
 
 from . import __version__
 
 __all__ = ["main"]
 
+logging.basicConfig(level=logging.INFO)
 
-def main() -> None:
-    fastcs.launch(ThorlabsMFF, version=__version__)
+app = typer.Typer()
+
+
+def version_callback(value: bool):
+    if value:
+        typer.echo(__version__)
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool | None = typer.Option(
+        None,
+        "--version",
+        callback=version_callback,
+        is_eager=True,
+        help="Print the version and exit",
+    ),
+):
+    pass
+
+
+@cache
+def load_config(config_file: Path) -> Config:
+    return Config(**yaml.safe_load(config_file.read_text()))
+
+
+@app.command()
+def run(config_file: Path):
+    config = load_config(config_file)
+
+    logging.info(f"PV PREFIX = {config.transport[0].ioc.pv_prefix}")
+
+    epics_ca = EpicsCATransport(
+        gui=EpicsGUIOptions(
+            output_path=Path(config.transport[0].gui.output_path),
+            title=config.transport[0].gui.title,
+        ),
+        epicsca=EpicsIOCOptions(pv_prefix=config.transport[0].ioc.pv_prefix),
+    )
+
+    controller = ThorlabsMFF(config.controller.serial_settings)
+    fastcs = FastCS(controller, [epics_ca])
+
+    fastcs.run()
 
 
 if __name__ == "__main__":
-    main()
+    app()

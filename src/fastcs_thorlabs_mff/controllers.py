@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from fastcs.attributes import AttrR, AttrRW
 from fastcs.connections import (
     SerialConnection,
@@ -16,11 +14,6 @@ from fastcs_thorlabs_mff.protocol import ThorlabsAPTProtocol
 from fastcs_thorlabs_mff.sim import SimSerialConnection
 
 protocol = ThorlabsAPTProtocol()
-
-
-@dataclass
-class ThorlabsMFFSettings:
-    serial_settings: SerialConnectionSettings
 
 
 class ThorlabsMFF(Controller):
@@ -81,26 +74,22 @@ class ThorlabsMFF(Controller):
         ),
     )
 
-    def __init__(self, settings: ThorlabsMFFSettings):
-        super().__init__(ios=[MFFAttributeIO(self)])
-        self.suffix = ""
-        self._settings = settings
+    def __init__(self, serial_settings: SerialConnectionSettings):
+        self._serial_settings = serial_settings
 
-        if settings.serial_settings.port.upper() == "SIM":
+        if self._serial_settings.port.upper() == "SIM":
             self.conn = SimSerialConnection()
         else:
             self.conn = SerialConnection()
 
+        super().__init__(ios=[MFFAttributeIO(self)])
+
     async def connect(self) -> None:
-        await self.conn.connect(self._settings.serial_settings)
+        await self.conn.connect(self._serial_settings)
+        await super().connect()
 
     async def disconnect(self) -> None:
         await self.conn.close()
-
-    @command()
-    async def toggle_position(self) -> None:
-        current_position = self.position.get()
-        await self.conn.send_command(protocol.set_position(not current_position))
 
     @command()
     async def blink_led(self) -> None:

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-
-# import logging
 from dataclasses import KW_ONLY, dataclass
 from typing import Any, TypeVar
 
@@ -13,8 +11,8 @@ NumberT = TypeVar("NumberT", int, float)
 
 @dataclass
 class MFFAttributeIORef(AttributeIORef):
-    name: str
     _: KW_ONLY
+    name: str
     response_size: int
     response_handler: Callable
     read_cmd: Callable | None = None
@@ -22,7 +20,7 @@ class MFFAttributeIORef(AttributeIORef):
     update_period: float | None = 10
 
 
-class MFFAttributeIO(AttributeIO[float, MFFAttributeIORef]):
+class MFFAttributeIO(AttributeIO[NumberT, MFFAttributeIORef]):
     """IO for mff attribute"""
 
     def __init__(self, controller):
@@ -31,9 +29,8 @@ class MFFAttributeIO(AttributeIO[float, MFFAttributeIORef]):
 
     async def update(
         self,
-        attr: AttrR[float, MFFAttributeIORef],
+        attr: AttrR[NumberT, MFFAttributeIORef],
     ) -> None:
-
         if attr.io_ref.read_cmd:
             response = await self.controller.conn.send_query(
                 attr.io_ref.read_cmd(),
@@ -41,18 +38,18 @@ class MFFAttributeIO(AttributeIO[float, MFFAttributeIORef]):
             )
 
             response = attr.io_ref.response_handler(response)
-            if attr.dtype is bool:
+            if attr.datatype is bool:
                 await attr.update(int(response))
             else:
                 await attr.update(response)
 
     async def send(
         self,
-        attr: AttrW[float, MFFAttributeIORef],
+        attr: AttrW[NumberT, MFFAttributeIORef],
         value: Any,
     ) -> None:
         if attr.io_ref.write_cmd:
-            if attr.dtype is bool:
+            if attr.datatype is bool:
                 value = int(value)
             await self.controller.conn.send_command(
                 attr.io_ref.write_cmd(value),

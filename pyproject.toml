@@ -14,6 +14,9 @@ classifiers = [
 description = "FastCS support for Thorlabs motorized filter flip mount"
 dependencies = [
     "fastcs>=0.12.0",
+    "pvi>=0.12.0",
+    "pyyaml>=6.0.3",
+    "softioc>=4.7.0",
 ] # Add project dependencies here, e.g. ["click", "numpy"]
 dynamic = ["version"]
 license.file = "LICENSE"
