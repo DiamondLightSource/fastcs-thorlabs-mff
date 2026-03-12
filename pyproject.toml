@@ -36,7 +36,7 @@ dev = [
 ]
 
 [project.scripts]
-fastcs-thorlabs-mff = "fastcs_thorlabs_mff.__main__:main"
+fastcs-thorlabs-mff = "fastcs_thorlabs_mff.__main__:app"
 
 [project.urls]
 GitHub = "https://github.com/DiamondLightSource/fastcs-thorlabs-mff"
