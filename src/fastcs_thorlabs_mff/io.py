@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import KW_ONLY, dataclass
 from typing import Any, TypeVar
 
 from fastcs.attributes import AttributeIO, AttributeIORef, AttrR, AttrW
+
+logger = logging.getLogger(__name__)
 
 NumberT = TypeVar("NumberT", int, float)
 
@@ -38,6 +41,7 @@ class MFFAttributeIO(AttributeIO[NumberT, MFFAttributeIORef]):
             )
 
             response = attr.io_ref.response_handler(response)
+            logger.debug("PV update: %s = %s", attr.io_ref.name, response)
             if attr.datatype is bool:
                 await attr.update(int(response))
             else:
@@ -49,6 +53,7 @@ class MFFAttributeIO(AttributeIO[NumberT, MFFAttributeIORef]):
         value: Any,
     ) -> None:
         if attr.io_ref.write_cmd:
+            logger.info("Setting %s to %s", attr.io_ref.name, value)
             if attr.datatype is bool:
                 value = int(value)
             await self.controller.conn.send_command(
