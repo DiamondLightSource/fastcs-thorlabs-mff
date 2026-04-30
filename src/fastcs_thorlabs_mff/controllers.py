@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastcs.attributes import AttrR, AttrRW
 from fastcs.connections import (
     SerialConnection,
@@ -13,6 +15,7 @@ from fastcs_thorlabs_mff.io import MFFAttributeIO, MFFAttributeIORef
 from fastcs_thorlabs_mff.protocol import ThorlabsAPTProtocol
 from fastcs_thorlabs_mff.sim import SimSerialConnection
 
+logger = logging.getLogger(__name__)
 protocol = ThorlabsAPTProtocol()
 
 
@@ -78,19 +81,25 @@ class ThorlabsMFF(Controller):
         self._serial_settings = serial_settings
 
         if self._serial_settings.port.upper() == "SIM":
+            logger.info("Using simulated serial connection")
             self.conn = SimSerialConnection()
         else:
+            logger.info("Using serial connection on port %s", serial_settings.port)
             self.conn = SerialConnection()
 
         super().__init__(ios=[MFFAttributeIO(self)])
 
     async def connect(self) -> None:
+        logger.info("Connecting to Thorlabs MFF")
         await self.conn.connect(self._serial_settings)
         await super().connect()
+        logger.info("Connected to Thorlabs MFF")
 
     async def disconnect(self) -> None:
+        logger.info("Disconnecting from Thorlabs MFF")
         await self.conn.close()
 
     @command()
     async def blink_led(self) -> None:
+        logger.info("Sending blink LED command")
         await self.conn.send_command(protocol.set_identify())

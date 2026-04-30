@@ -1,4 +1,8 @@
+import logging
+
 from fastcs.connections import SerialConnection, SerialConnectionSettings
+
+logger = logging.getLogger(__name__)
 
 
 class SimSerialConnection(SerialConnection):
@@ -9,14 +13,14 @@ class SimSerialConnection(SerialConnection):
         self._moving: bool = False
 
     async def connect(self, settings: SerialConnectionSettings) -> None:
-        print(f"[SIM] Connected (ignoring port {settings.port})")
+        logger.info("[SIM] Connected (ignoring port %s)", settings.port)
 
     async def close(self) -> None:
-        print("[SIM] Disconnected")
+        logger.info("[SIM] Disconnected")
 
     async def send_command(self, message: bytes) -> None:
         if message == b"\x23\x02\x00\x00\x50\x01":  # blink_led
-            print("[SIM] LED blinking!")
+            logger.info("[SIM] LED blinking!")
         elif message == b"\x6a\x04\x00\x02\x50\x01":  # move to position 2
             await self._simulate_move(True)
         elif message == b"\x6a\x04\x00\x01\x50\x01":  # move to position 1
@@ -28,10 +32,11 @@ class SimSerialConnection(SerialConnection):
         elif message == b"\x05\x00\x00\x00\x50\x01":  # get_info
             return self._build_info_response()
 
-        print(bytes(response_size))
         return bytes(response_size)
 
     async def _simulate_move(self, target: bool) -> None:
+        position_label = "position 2" if target else "position 1"
+        logger.debug("[SIM] Moving to %s", position_label)
         self._position = target
 
     def _build_position_response(self) -> bytes:
