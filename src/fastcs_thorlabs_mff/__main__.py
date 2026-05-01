@@ -58,7 +58,7 @@ def run(config_file: Path):
         epicsca=EpicsIOCOptions(pv_prefix=config.transport[0].ioc.pv_prefix),
     )
 
-    controller = ThorlabsMFF(config.controller.serial_settings)
+    controller = ThorlabsMFF(config.controller.serial_settings.as_connection_settings())
     fastcs = FastCS(controller, [epics_ca])
 
     fastcs.run()
