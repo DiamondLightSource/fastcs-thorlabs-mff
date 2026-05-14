@@ -518,6 +518,7 @@ dependencies = [
     { name = "pvi" },
     { name = "pyyaml" },
     { name = "softioc" },
+    { name = "stdio-socket" },
 ]
 
 [package.dev-dependencies]
@@ -539,6 +540,7 @@ requires-dist = [
     { name = "pvi", specifier = ">=0.12.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "softioc", specifier = ">=4.7.0" },
+    { name = "stdio-socket", specifier = ">=1.4.0" },
 ]
 
 [package.metadata.requires-dev]
