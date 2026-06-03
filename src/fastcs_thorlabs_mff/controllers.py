@@ -11,6 +11,7 @@ from fastcs.controllers import Controller
 from fastcs.datatypes import Bool, Int, String
 from fastcs.methods import command
 
+from fastcs_thorlabs_mff.config import SerialSettings
 from fastcs_thorlabs_mff.io import MFFAttributeIO, MFFAttributeIORef
 from fastcs_thorlabs_mff.protocol import ThorlabsAPTProtocol
 from fastcs_thorlabs_mff.sim import SimSerialConnection
@@ -77,8 +78,10 @@ class ThorlabsMFF(Controller):
         ),
     )
 
-    def __init__(self, serial_settings: SerialConnectionSettings):
-        self._serial_settings = serial_settings
+    def __init__(self, serial_settings: SerialSettings):
+        self._serial_settings: SerialConnectionSettings = (
+            serial_settings.as_connection_settings()
+        )
 
         if self._serial_settings.port.upper() == "SIM":
             logger.info("Using simulated serial connection")
