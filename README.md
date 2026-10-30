@@ -10,8 +10,9 @@ FastCS support for Thorlabs motorized filter flip mount
 This is where you should write a short paragraph that describes what your module does,
 how it does it, and why people should use it.
 
-Source          | <https://github.com/DiamondLightSource/fastcs-thorlabs-mff>
+What            | Where
 :---:           | :---:
+Source          | <https://github.com/DiamondLightSource/fastcs-thorlabs-mff>
 Docker          | `docker run ghcr.io/diamondlightsource/fastcs-thorlabs-mff:latest`
 Releases        | <https://github.com/DiamondLightSource/fastcs-thorlabs-mff/releases>
 
