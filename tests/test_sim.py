@@ -27,9 +27,10 @@ async def test_set_position_true(sim):
 
 @pytest.mark.asyncio
 async def test_set_position_false(sim):
-    await sim.set_position(True)
-    await sim.set_position(False)
-    assert await sim.get_position() is False
+    controller = ThorlabsMFF(sim)
+    await controller.set_position(True)
+    await controller.set_position(False)
+    assert await controller.get_position() is False
 
 
 def test_controller_takes_connection(sim):
