@@ -1,38 +1,42 @@
 import logging
 
-from fastcs.connections import SerialConnection, SerialConnectionSettings
+from fastcs_thorlabs_mff.connection import MFFConnection
 
 logger = logging.getLogger(__name__)
 
 
-class SimSerialConnection(SerialConnection):
-    """Simulates the Thorlabs MFF serial interface."""
+class SimMFFConnection(MFFConnection):
+    """Simulates the Thorlabs MFF serial interface.
+
+    yaml can't choose this in place of `MFFConnection`, so pass it in Python, e.g.
+    ``ControllerSpec("MFF", ThorlabsMFF, connection=SimMFFConnection())``.
+    """
 
     def __init__(self):
+        super().__init__(port="SIM")
         self._position: bool = False  # False = position 1, True = position 2
-        self._moving: bool = False
 
-    async def connect(self, settings: SerialConnectionSettings) -> None:
-        logger.info("[SIM] Connected (ignoring port %s)", settings.port)
+    async def connect(self) -> None:
+        logger.info("[SIM] Connected")
 
     async def close(self) -> None:
         logger.info("[SIM] Disconnected")
 
-    async def send_command(self, message: bytes) -> None:
-        if message == b"\x23\x02\x00\x00\x50\x01":  # blink_led
+    async def write_bytes(self, data: bytes) -> None:
+        if data == b"\x23\x02\x00\x00\x50\x01":  # blink_led
             logger.info("[SIM] LED blinking!")
-        elif message == b"\x6a\x04\x00\x02\x50\x01":  # move to position 2
+        elif data == b"\x6a\x04\x00\x02\x50\x01":  # move to position 2
             await self._simulate_move(True)
-        elif message == b"\x6a\x04\x00\x01\x50\x01":  # move to position 1
+        elif data == b"\x6a\x04\x00\x01\x50\x01":  # move to position 1
             await self._simulate_move(False)
 
-    async def send_query(self, message: bytes, response_size: int) -> bytes:
-        if message == b"\x29\x04\x00\x00\x50\x01":  # get_position
+    async def query_bytes(self, data: bytes, size: int) -> bytes:
+        if data == b"\x29\x04\x00\x00\x50\x01":  # get_position
             return self._build_position_response()
-        elif message == b"\x05\x00\x00\x00\x50\x01":  # get_info
+        elif data == b"\x05\x00\x00\x00\x50\x01":  # get_info
             return self._build_info_response()
 
-        return bytes(response_size)
+        return bytes(size)
 
     async def _simulate_move(self, target: bool) -> None:
         position_label = "position 2" if target else "position 1"

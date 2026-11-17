@@ -15,18 +15,39 @@ Source          | <https://github.com/DiamondLightSource/fastcs-thorlabs-mff>
 Docker          | `docker run ghcr.io/diamondlightsource/fastcs-thorlabs-mff:latest`
 Releases        | <https://github.com/DiamondLightSource/fastcs-thorlabs-mff/releases>
 
-This is where you should put some images or code snippets that illustrate
-some relevant examples. If it is a library then you might put some
-introductory code here:
+The serial port is configured on the controller's `connection`, either directly with
+`port` or from an environment variable with `port_env`:
+
+```yaml
+controllers:
+  - id: MFF
+    type: fastcs_thorlabs_mff.ThorlabsMFF
+    connections:
+      connection:
+        port: "/dev/ttyUSB0"  # or port_env: MFF_PORT
+        baud: 115200
+transport:
+  - epicsca: {}
+```
+
+```
+python -m fastcs_thorlabs_mff run fastcs.yaml
+```
+
+FastCS opens the port, and if the device is unplugged it reopens it, by default
+up to 10 times 1 s apart. To run against the simulator, pass `SimMFFConnection`
+from Python; it can't be chosen from yaml:
 
 ```python
-from fastcs_thorlabs_mff import __version__
+from fastcs.control_system import FastCS
+from fastcs.controllers import ControllerSpec
+from fastcs.transports.epics.ca import EpicsCATransport
 
-print(f"Hello fastcs_thorlabs_mff {__version__}")
-```
+from fastcs_thorlabs_mff.controllers import ThorlabsMFF
+from fastcs_thorlabs_mff.sim import SimMFFConnection
 
-Or if it is a commandline tool then you might put some example commands here:
-
-```
-python -m fastcs_thorlabs_mff --version
+FastCS(
+    [ControllerSpec("MFF", ThorlabsMFF, connection=SimMFFConnection())],
+    [EpicsCATransport()],
+).run()
 ```

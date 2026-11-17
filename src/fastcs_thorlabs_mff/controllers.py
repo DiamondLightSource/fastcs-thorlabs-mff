@@ -2,107 +2,60 @@ from __future__ import annotations
 
 import logging
 
-from fastcs.attributes import AttrR, AttrRW
-from fastcs.connections import (
-    SerialConnection,
-    SerialConnectionSettings,
-)
+from fastcs.attributes import AttrR, AttrRW, Polled
 from fastcs.controllers import Controller
-from fastcs.datatypes import Bool, Int, String
 from fastcs.methods import command
 
-from fastcs_thorlabs_mff.config import SerialSettings
-from fastcs_thorlabs_mff.io import MFFAttributeIO, MFFAttributeIORef
+from fastcs_thorlabs_mff.connection import MFFConnection
 from fastcs_thorlabs_mff.protocol import ThorlabsAPTProtocol
-from fastcs_thorlabs_mff.sim import SimSerialConnection
 
 logger = logging.getLogger(__name__)
 protocol = ThorlabsAPTProtocol()
 
+POSITION_RESPONSE_SIZE = 12
+INFO_RESPONSE_SIZE = 90
+
 
 class ThorlabsMFF(Controller):
-    position = AttrRW(
-        Bool(),
-        io_ref=MFFAttributeIORef(
-            name="position",
-            response_handler=protocol.read_position,
-            response_size=12,
-            read_cmd=protocol.get_position,
-            write_cmd=protocol.set_position,
-            update_period=0.2,
-        ),
-    )
-    model = AttrR(
-        String(),
-        io_ref=MFFAttributeIORef(
-            name="model",
-            response_handler=protocol.read_model,
-            response_size=90,
-            read_cmd=protocol.get_info,
-        ),
-    )
-    device_type = AttrR(
-        Int(),
-        io_ref=MFFAttributeIORef(
-            name="device_type",
-            response_handler=protocol.read_type,
-            response_size=90,
-            read_cmd=protocol.get_info,
-        ),
-    )
-    serial_no = AttrR(
-        Int(),
-        io_ref=MFFAttributeIORef(
-            name="serial_no",
-            response_handler=protocol.read_serial_no,
-            response_size=90,
-            read_cmd=protocol.get_info,
-        ),
-    )
-    firmware_version = AttrR(
-        Int(),
-        io_ref=MFFAttributeIORef(
-            name="firmware_version",
-            response_handler=protocol.read_firmware_v,
-            response_size=90,
-            read_cmd=protocol.get_info,
-        ),
-    )
-    hardware_version = AttrR(
-        Int(),
-        io_ref=MFFAttributeIORef(
-            name="hardware_version",
-            response_handler=protocol.read_hardware_v,
-            response_size=90,
-            read_cmd=protocol.get_info,
-        ),
-    )
+    def __init__(self, connection: MFFConnection):
+        super().__init__()
+        self.connection = connection
 
-    def __init__(self, serial_settings: SerialSettings):
-        self._serial_settings: SerialConnectionSettings = (
-            serial_settings.as_connection_settings()
+        # Datatypes are inferred from the getters' return annotations
+        self.position = AttrRW(
+            getter=Polled(self.get_position, period=0.2),
+            setter=self.set_position,
         )
+        # Static device info, all from one info query. `model`'s getter makes the
+        # query once at connect, and again after a reconnect, and fills in the rest
+        self.model = AttrR(getter=self.read_info)
+        self.device_type = AttrR(int)
+        self.serial_no = AttrR(int)
+        self.firmware_version = AttrR(int)
+        self.hardware_version = AttrR(int)
 
-        if self._serial_settings.port.upper() == "SIM":
-            logger.info("Using simulated serial connection")
-            self.conn = SimSerialConnection()
-        else:
-            logger.info("Using serial connection on port %s", serial_settings.port)
-            self.conn = SerialConnection()
+    async def get_position(self) -> bool:
+        response = await self.connection.query_bytes(
+            protocol.get_position(), POSITION_RESPONSE_SIZE
+        )
+        return protocol.read_position(response)
 
-        super().__init__(ios=[MFFAttributeIO(self)])
+    async def set_position(self, value: bool) -> None:
+        logger.info("Setting position to %s", value)
+        await self.connection.write_bytes(protocol.set_position(value))
 
-    async def connect(self) -> None:
-        logger.info("Connecting to Thorlabs MFF")
-        await self.conn.connect(self._serial_settings)
-        await super().connect()
-        logger.info("Connected to Thorlabs MFF")
-
-    async def disconnect(self) -> None:
-        logger.info("Disconnecting from Thorlabs MFF")
-        await self.conn.close()
+    async def read_info(self) -> str:
+        """Query the device info, update the info attributes and return the model"""
+        info = await self.connection.query_bytes(
+            protocol.get_info(), INFO_RESPONSE_SIZE
+        )
+        await self.device_type.update(protocol.read_type(info))
+        await self.serial_no.update(protocol.read_serial_no(info))
+        await self.firmware_version.update(protocol.read_firmware_v(info))
+        await self.hardware_version.update(protocol.read_hardware_v(info))
+        return protocol.read_model(info)
 
     @command()
     async def blink_led(self) -> None:
         logger.info("Sending blink LED command")
-        await self.conn.send_command(protocol.set_identify())
+        await self.connection.write_bytes(protocol.set_identify())
