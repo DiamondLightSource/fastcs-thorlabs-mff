@@ -2,7 +2,10 @@
 controllers:
   - id: TEST
     type: fastcs_thorlabs_mff.ThorlabsMFF
-    port: "port"
+    connections:
+      connection:
+        port: "/dev/ttyUSB0"
+        baud: 115200
 transport:
   - epicsca: {}
     gui:

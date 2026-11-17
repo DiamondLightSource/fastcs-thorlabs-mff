@@ -97,6 +97,67 @@
       "title": "EpicsGUIOptions",
       "type": "object"
     },
+    "MFFConnectionSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        },
+        "port_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port Env"
+        },
+        "baud": {
+          "default": 115200,
+          "title": "Baud",
+          "type": "integer"
+        },
+        "reconnect_attempts": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 10,
+          "title": "Reconnect Attempts"
+        },
+        "reconnect_period": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Reconnect Period",
+          "type": "number"
+        },
+        "disconnect_after_timeouts": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Disconnect After Timeouts",
+          "type": "integer"
+        }
+      },
+      "title": "MFFConnectionSettings",
+      "type": "object"
+    },
     "RestServerOptions": {
       "properties": {
         "host": {
@@ -128,6 +189,19 @@
       "title": "RestTransport",
       "type": "object"
     },
+    "ThorlabsMFFConnections": {
+      "additionalProperties": false,
+      "properties": {
+        "connection": {
+          "$ref": "#/$defs/MFFConnectionSettings"
+        }
+      },
+      "required": [
+        "connection"
+      ],
+      "title": "ThorlabsMFFConnections",
+      "type": "object"
+    },
     "ThorlabsMFFEntry": {
       "additionalProperties": false,
       "properties": {
@@ -140,39 +214,14 @@
           "title": "Type",
           "type": "string"
         },
-        "port": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Port"
-        },
-        "port_env": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Port Env"
-        },
-        "baud": {
-          "default": 115200,
-          "title": "Baud",
-          "type": "integer"
+        "connections": {
+          "$ref": "#/$defs/ThorlabsMFFConnections"
         }
       },
       "required": [
         "id",
-        "type"
+        "type",
+        "connections"
       ],
       "title": "ThorlabsMFFEntry",
       "type": "object"
