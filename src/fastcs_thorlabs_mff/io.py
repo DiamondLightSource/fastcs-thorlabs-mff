@@ -1,61 +1,26 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
-from dataclasses import KW_ONLY, dataclass
-from typing import Any, TypeVar
+from dataclasses import dataclass
 
-from fastcs.attributes import AttributeIO, AttributeIORef, AttrR, AttrW
+from fastcs.attributes import AttributeIO, AttributeIORef, AttrW
+
+from fastcs_thorlabs_mff import protocol
+from fastcs_thorlabs_mff.connection import APTConnection
 
 logger = logging.getLogger(__name__)
 
-NumberT = TypeVar("NumberT", int, float)
-
 
 @dataclass
-class MFFAttributeIORef(AttributeIORef):
-    _: KW_ONLY
-    name: str
-    response_size: int
-    response_handler: Callable
-    read_cmd: Callable | None = None
-    write_cmd: Callable | None = None
-    update_period: float | None = 10
+class MFFPositionIORef(AttributeIORef):
+    """Writes to the flipper position. Readback comes from the status scan."""
 
 
-class MFFAttributeIO(AttributeIO[NumberT, MFFAttributeIORef]):
-    """IO for mff attribute"""
-
-    def __init__(self, controller):
+class MFFPositionIO(AttributeIO[bool, MFFPositionIORef]):
+    def __init__(self, connection: APTConnection):
         super().__init__()
-        self.controller = controller
+        self.connection = connection
 
-    async def update(
-        self,
-        attr: AttrR[NumberT, MFFAttributeIORef],
-    ) -> None:
-        if attr.io_ref.read_cmd:
-            response = await self.controller.conn.send_query(
-                attr.io_ref.read_cmd(),
-                attr.io_ref.response_size,
-            )
-
-            response = attr.io_ref.response_handler(response)
-            logger.debug("PV update: %s = %s", attr.io_ref.name, response)
-            if attr.datatype is bool:
-                await attr.update(int(response))
-            else:
-                await attr.update(response)
-
-    async def send(
-        self,
-        attr: AttrW[NumberT, MFFAttributeIORef],
-        value: Any,
-    ) -> None:
-        if attr.io_ref.write_cmd:
-            logger.info("Setting %s to %s", attr.io_ref.name, value)
-            if attr.datatype is bool:
-                value = int(value)
-            await self.controller.conn.send_command(
-                attr.io_ref.write_cmd(value),
-            )
+    async def send(self, attr: AttrW[bool, MFFPositionIORef], value: bool) -> None:
+        logger.info("Moving to position %d", 2 if value else 1)
+        await self.connection.send(protocol.move_jog(value))

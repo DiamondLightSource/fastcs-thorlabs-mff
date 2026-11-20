@@ -1,55 +1,125 @@
-import logging
+"""Byte-level simulation of a Thorlabs MFF on a serial port."""
 
-from fastcs.connections import SerialConnection, SerialConnectionSettings
+from __future__ import annotations
+
+import asyncio
+import logging
+import struct
+
+from fastcs_thorlabs_mff.connection import READ_TIMEOUT
+from fastcs_thorlabs_mff.protocol import (
+    CHANNEL,
+    DEVICE,
+    HEADER_SIZE,
+    HOST,
+    APTMessage,
+    MsgId,
+    StatusBits,
+)
 
 logger = logging.getLogger(__name__)
 
+MODEL = b"MFF101\x00\x00"
+DEVICE_TYPE = 0x1007
+SERIAL_NO = 37000001
+FIRMWARE_VERSION = 0x010203
+HARDWARE_VERSION = 3
 
-class SimSerialConnection(SerialConnection):
-    """Simulates the Thorlabs MFF serial interface."""
 
-    def __init__(self):
-        self._position: bool = False  # False = position 1, True = position 2
-        self._moving: bool = False
+def _reply(msg_id: MsgId, data: bytes) -> bytes:
+    return APTMessage(msg_id, dest=HOST, source=DEVICE, data=data).to_bytes()
 
-    async def connect(self, settings: SerialConnectionSettings) -> None:
-        logger.info("[SIM] Connected (ignoring port %s)", settings.port)
 
-    async def close(self) -> None:
-        logger.info("[SIM] Disconnected")
+class SimMFFStream:
+    """Stands in for `aioserial.AioSerial` connected to an MFF.
 
-    async def send_command(self, message: bytes) -> None:
-        if message == b"\x23\x02\x00\x00\x50\x01":  # blink_led
-            logger.info("[SIM] LED blinking!")
-        elif message == b"\x6a\x04\x00\x02\x50\x01":  # move to position 2
-            await self._simulate_move(True)
-        elif message == b"\x6a\x04\x00\x01\x50\x01":  # move to position 1
-            await self._simulate_move(False)
+    Moves take `move_time` seconds, during which the status bits report motion and
+    neither position, and finish with an unsolicited MOT_MOVE_COMPLETED, as the APT
+    protocol specifies for MOT_MOVE_JOG.
 
-    async def send_query(self, message: bytes, response_size: int) -> bytes:
-        if message == b"\x29\x04\x00\x00\x50\x01":  # get_position
-            return self._build_position_response()
-        elif message == b"\x05\x00\x00\x00\x50\x01":  # get_info
-            return self._build_info_response()
+    :param move_time: Seconds a move between positions takes
+    :param read_timeout: Seconds `read_async` waits before returning a short read
+    """
 
-        return bytes(response_size)
+    def __init__(self, move_time: float = 0.5, read_timeout: float = READ_TIMEOUT):
+        self.move_time = move_time
+        self.read_timeout = read_timeout
+        self.position = False  # False = position 1, True = position 2
+        self._target: bool | None = None
+        self._move_task: asyncio.Task | None = None
+        self._rx = bytearray()
+        self._rx_changed = asyncio.Event()
 
-    async def _simulate_move(self, target: bool) -> None:
-        position_label = "position 2" if target else "position 1"
-        logger.debug("[SIM] Moving to %s", position_label)
-        self._position = target
+    def inject(self, data: bytes) -> None:
+        """Queue raw bytes for the host to read, e.g. noise or unsolicited messages"""
+        self._rx += data
+        self._rx_changed.set()
 
-    def _build_position_response(self) -> bytes:
-        # 12 bytes, position at byte 8: 1=position1 (False), 2=position2 (True)
-        response = bytearray(12)
-        response[8] = 2 if self._position else 1
-        return bytes(response)
+    async def write_async(self, data: bytes) -> int:
+        # Host messages are all header-only
+        for i in range(0, len(data) - HEADER_SIZE + 1, HEADER_SIZE):
+            self._handle(APTMessage.from_header(data[i : i + HEADER_SIZE]))
+        return len(data)
 
-    def _build_info_response(self) -> bytes:
-        response = bytearray(90)
-        response[10:18] = b"MFF101  "  # model
-        response[18:20] = (0x1007).to_bytes(2, "little")  # device type
-        response[6:10] = (12345678).to_bytes(4, "little")  # serial no
-        response[20:24] = (0x010203).to_bytes(4, "little")  # firmware v
-        response[84:86] = (3).to_bytes(2, "little")  # hardware v
-        return bytes(response)
+    async def read_async(self, size: int = 1) -> bytes:
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + self.read_timeout
+        while len(self._rx) < size and (remaining := deadline - loop.time()) > 0:
+            self._rx_changed.clear()
+            try:
+                await asyncio.wait_for(self._rx_changed.wait(), remaining)
+            except TimeoutError:
+                break
+        data = bytes(self._rx[:size])
+        del self._rx[:size]
+        return data
+
+    def reset_input_buffer(self) -> None:
+        self._rx.clear()
+
+    def close(self) -> None:
+        if self._move_task is not None:
+            self._move_task.cancel()
+
+    def _handle(self, message: APTMessage) -> None:
+        match message.msg_id:
+            case MsgId.MOD_IDENTIFY:
+                logger.info("[SIM] LED blinking!")
+            case MsgId.HW_REQ_INFO:
+                self.inject(_reply(MsgId.HW_GET_INFO, self._info()))
+            case MsgId.MOT_REQ_STATUSBITS:
+                status = struct.pack("<HI", CHANNEL, self._status_bits())
+                self.inject(_reply(MsgId.MOT_GET_STATUSBITS, status))
+            case MsgId.MOT_MOVE_JOG:
+                self._start_move(message.param2 == 2)
+            case _:
+                logger.warning("[SIM] Ignoring message 0x%04X", message.msg_id)
+
+    def _status_bits(self) -> int:
+        if self._target is not None:
+            return StatusBits.MOVING_CCW if self._target else StatusBits.MOVING_CW
+        return StatusBits.POSITION_2 if self.position else StatusBits.POSITION_1
+
+    def _start_move(self, target: bool) -> None:
+        if self._move_task is not None:
+            self._move_task.cancel()
+        self._target = target
+        self._move_task = asyncio.create_task(self._move(target))
+
+    async def _move(self, target: bool) -> None:
+        logger.debug("[SIM] Moving to position %d", 2 if target else 1)
+        await asyncio.sleep(self.move_time if target != self.position else 0)
+        self.position = target
+        self._target = None
+        # Channel, position, velocity, reserved, status bits
+        data = struct.pack("<HiHHI", CHANNEL, 0, 0, 0, self._status_bits())
+        self.inject(_reply(MsgId.MOT_MOVE_COMPLETED, data))
+
+    def _info(self) -> bytes:
+        data = bytearray(84)
+        data[0:4] = SERIAL_NO.to_bytes(4, "little")
+        data[4:12] = MODEL
+        data[12:14] = DEVICE_TYPE.to_bytes(2, "little")
+        data[14:18] = FIRMWARE_VERSION.to_bytes(4, "little")
+        data[78:80] = HARDWARE_VERSION.to_bytes(2, "little")
+        return bytes(data)
