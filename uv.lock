@@ -491,13 +491,14 @@ wheels = [
 
 [[package]]
 name = "fastcs"
-version = "0.14.3"
+version = "0.14.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioserial" },
     { name = "fastapi", extra = ["standard"] },
     { name = "ipython", version = "9.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "ipython", version = "9.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "jinja2" },
     { name = "loguru" },
     { name = "numpy" },
     { name = "pydantic" },
@@ -505,9 +506,9 @@ dependencies = [
     { name = "ruamel-yaml" },
     { name = "stdio-socket" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/7d/21a3f92a043fd1499f290d27427cc1f0461f2a573a55071774031db1df26/fastcs-0.14.3.tar.gz", hash = "sha256:b289c1bb4bb6599f3b3ea946792abfd953888f3fe8800e3fdb95814a619679ae", size = 420194, upload-time = "2026-10-01T11:53:33.923Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/c2/dbda80166badfa47b36cd19dbb8b83d533237a15d48cf6e38db25ad14745/fastcs-0.14.5.tar.gz", hash = "sha256:91bf761c5cb0febb0e31d55c76d9e9b5c48b487eeff5b89b3c720eb2bd12e433", size = 424645, upload-time = "2026-11-24T12:13:13.35Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/1c/e75b41c22dd4fe85a1ab7bb389d6acc078bdae9c44d1f4f9ac7f1e05d226/fastcs-0.14.3-py3-none-any.whl", hash = "sha256:406f0e1b3aa6562f4ec85595518990aed9f5115ad9f9038f0560eecd5a90e936", size = 95807, upload-time = "2026-10-01T11:53:32.807Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/63/ffd14848a6ffc8c19b59a666e9032ef9655717332431661bfcb094af5fb9/fastcs-0.14.5-py3-none-any.whl", hash = "sha256:8835d3cf2cf211519b765f8c7526c8d81f8d811c0c53bf505c55a3415e7f6384", size = 98116, upload-time = "2026-11-24T12:13:12.208Z" },
 ]
 
 [package.optional-dependencies]
@@ -542,7 +543,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aioserial" },
-    { name = "fastcs", extras = ["epicsca"], specifier = "~=0.14.3" },
+    { name = "fastcs", extras = ["epicsca"], specifier = "~=0.14.5" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "stdio-socket", specifier = ">=1.4.0" },
 ]
@@ -686,17 +687,17 @@ resolution-markers = [
     "python_full_version < '3.12'",
 ]
 dependencies = [
-    { name = "colorama", marker = "python_full_version < '3.12' and sys_platform == 'win32'" },
-    { name = "decorator", marker = "python_full_version < '3.12'" },
-    { name = "ipython-pygments-lexers", marker = "python_full_version < '3.12'" },
-    { name = "jedi", marker = "python_full_version < '3.12'" },
-    { name = "matplotlib-inline", marker = "python_full_version < '3.12'" },
-    { name = "pexpect", marker = "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "prompt-toolkit", marker = "python_full_version < '3.12'" },
-    { name = "pygments", marker = "python_full_version < '3.12'" },
-    { name = "stack-data", marker = "python_full_version < '3.12'" },
-    { name = "traitlets", marker = "python_full_version < '3.12'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "decorator" },
+    { name = "ipython-pygments-lexers" },
+    { name = "jedi" },
+    { name = "matplotlib-inline" },
+    { name = "pexpect", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "prompt-toolkit" },
+    { name = "pygments" },
+    { name = "stack-data" },
+    { name = "traitlets" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a6/60/2111715ea11f39b1535bed6024b7dec7918b71e5e5d30855a5b503056b50/ipython-9.10.0.tar.gz", hash = "sha256:cd9e656be97618a0676d058134cd44e6dc7012c0e5cb36a9ce96a8c904adaf77", size = 4426526, upload-time = "2026-02-02T10:00:33.594Z" }
 wheels = [
@@ -713,16 +714,16 @@ resolution-markers = [
     "python_full_version == '3.12.*'",
 ]
 dependencies = [
-    { name = "colorama", marker = "python_full_version >= '3.12' and sys_platform == 'win32'" },
-    { name = "decorator", marker = "python_full_version >= '3.12'" },
-    { name = "ipython-pygments-lexers", marker = "python_full_version >= '3.12'" },
-    { name = "jedi", marker = "python_full_version >= '3.12'" },
-    { name = "matplotlib-inline", marker = "python_full_version >= '3.12'" },
-    { name = "pexpect", marker = "python_full_version >= '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "prompt-toolkit", marker = "python_full_version >= '3.12'" },
-    { name = "pygments", marker = "python_full_version >= '3.12'" },
-    { name = "stack-data", marker = "python_full_version >= '3.12'" },
-    { name = "traitlets", marker = "python_full_version >= '3.12'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "decorator" },
+    { name = "ipython-pygments-lexers" },
+    { name = "jedi" },
+    { name = "matplotlib-inline" },
+    { name = "pexpect", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "prompt-toolkit" },
+    { name = "pygments" },
+    { name = "stack-data" },
+    { name = "traitlets" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/86/28/a4698eda5a8928a45d6b693578b135b753e14fa1c2b36ee9441e69a45576/ipython-9.11.0.tar.gz", hash = "sha256:2a94bc4406b22ecc7e4cb95b98450f3ea493a76bec8896cda11b78d7752a6667", size = 4427354, upload-time = "2026-03-05T08:57:30.549Z" }
 wheels = [
