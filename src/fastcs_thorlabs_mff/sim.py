@@ -8,8 +8,9 @@ specifies for MOT_MOVE_JOG.
 from __future__ import annotations
 
 import asyncio
-import logging
 import struct
+
+from fastcs.logging import logger as _logger
 
 from fastcs_thorlabs_mff.connection import READ_TIMEOUT
 from fastcs_thorlabs_mff.constants import (
@@ -22,7 +23,7 @@ from fastcs_thorlabs_mff.constants import (
 )
 from fastcs_thorlabs_mff.messages import APTMessage
 
-logger = logging.getLogger(__name__)
+logger = _logger.bind(logger_name=__name__)
 
 MODEL = b"MFF101\x00\x00"
 DEVICE_TYPE = 0x1007
@@ -81,7 +82,7 @@ class SimMFFStream:
     def _handle(self, message: APTMessage) -> None:
         match message.msg_id:
             case MsgId.MOD_IDENTIFY:
-                logger.info("[SIM] LED blinking!")
+                logger.info("LED blinking")
             case MsgId.HW_REQ_INFO:
                 self.inject(_reply(MsgId.HW_GET_INFO, self._info()))
             case MsgId.MOT_REQ_STATUSBITS:
@@ -90,7 +91,9 @@ class SimMFFStream:
             case MsgId.MOT_MOVE_JOG:
                 self._start_move(message.param2 == 2)
             case _:
-                logger.warning("[SIM] Ignoring message 0x%04X", message.msg_id)
+                logger.warning(
+                    "Ignoring unknown message", msg_id=f"0x{message.msg_id:04X}"
+                )
 
     def _status_bits(self) -> int:
         if self._target is not None:
@@ -104,7 +107,7 @@ class SimMFFStream:
         self._move_task = asyncio.create_task(self._move(target))
 
     async def _move(self, target: bool) -> None:
-        logger.debug("[SIM] Moving to position %d", 2 if target else 1)
+        logger.debug("Moving", position=2 if target else 1)
         await asyncio.sleep(self.move_time if target != self.position else 0)
         self.position = target
         self._target = None

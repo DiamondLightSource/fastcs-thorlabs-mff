@@ -1,9 +1,9 @@
-import logging
 import os
 
+from fastcs.logging import logger as _logger
 from pydantic import BaseModel, model_validator
 
-logger = logging.getLogger(__name__)
+logger = _logger.bind(logger_name=__name__)
 
 
 class SerialSettings(BaseModel):
@@ -20,9 +20,7 @@ class SerialSettings(BaseModel):
             if not resolved:
                 raise ValueError(f"Environment variable '{self.port_env}' is not set")
             logger.info(
-                "Resolved port '%s' from environment variable '%s'",
-                resolved,
-                self.port_env,
+                "Resolved port from environment", port=resolved, env=self.port_env
             )
             self.port = resolved
         if not self.port:

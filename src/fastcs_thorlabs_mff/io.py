@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 
 from fastcs.attributes import AttributeIO, AttributeIORef, AttrW
+from fastcs.logging import logger as _logger
 
 from fastcs_thorlabs_mff.connection import APTConnection
 from fastcs_thorlabs_mff.constants import CHANNEL, MsgId
 from fastcs_thorlabs_mff.messages import APTMessage
 
-logger = logging.getLogger(__name__)
+logger = _logger.bind(logger_name=__name__)
 
 
 @dataclass
@@ -24,5 +24,5 @@ class MFFPositionIO(AttributeIO[bool, MFFPositionIORef]):
 
     async def send(self, attr: AttrW[bool, MFFPositionIORef], value: bool) -> None:
         position = 2 if value else 1
-        logger.info("Moving to position %d", position)
+        logger.info("Moving", position=position)
         await self.connection.send(APTMessage(MsgId.MOT_MOVE_JOG, CHANNEL, position))
