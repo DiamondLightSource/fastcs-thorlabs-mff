@@ -1,7 +1,6 @@
 import logging
 import os
 
-from fastcs.connections import SerialConnectionSettings
 from pydantic import BaseModel, model_validator
 
 logger = logging.getLogger(__name__)
@@ -29,30 +28,3 @@ class SerialSettings(BaseModel):
         if not self.port:
             raise ValueError("Either 'port' or 'port_env' must be provided")
         return self
-
-    def as_connection_settings(self) -> SerialConnectionSettings:
-        assert self.port is not None
-        return SerialConnectionSettings(port=self.port, baud=self.baud)
-
-
-class ControllerConfig(BaseModel):
-    serial_settings: SerialSettings
-
-
-class IOCConfig(BaseModel):
-    pv_prefix: str
-
-
-class GUIConfig(BaseModel):
-    output_path: str
-    title: str
-
-
-class TransportConfig(BaseModel):
-    ioc: IOCConfig
-    gui: GUIConfig
-
-
-class Config(BaseModel):
-    controller: ControllerConfig
-    transport: list[TransportConfig]

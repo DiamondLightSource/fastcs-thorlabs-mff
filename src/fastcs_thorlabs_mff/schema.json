@@ -1,8 +1,89 @@
 {
   "$defs": {
+    "CommandAlias": {
+      "additionalProperties": false,
+      "properties": {
+        "pv": {
+          "title": "Pv",
+          "type": "string"
+        },
+        "triggers": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Triggers",
+          "type": "object"
+        }
+      },
+      "required": [
+        "pv",
+        "triggers"
+      ],
+      "title": "CommandAlias",
+      "type": "object"
+    },
+    "EnumMapping": {
+      "additionalProperties": false,
+      "properties": {
+        "pv": {
+          "title": "Pv",
+          "type": "string"
+        },
+        "mapping": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Mapping",
+          "type": "object"
+        }
+      },
+      "required": [
+        "pv",
+        "mapping"
+      ],
+      "title": "EnumMapping",
+      "type": "object"
+    },
     "EpicsCAOptions": {
       "additionalProperties": false,
-      "properties": {},
+      "properties": {
+        "aliases": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/$defs/EnumMapping"
+              },
+              {
+                "$ref": "#/$defs/CommandAlias"
+              }
+            ]
+          },
+          "title": "Aliases",
+          "type": "object"
+        }
+      },
       "title": "EpicsCAOptions",
       "type": "object"
     },
@@ -128,7 +209,7 @@
       "title": "RestTransport",
       "type": "object"
     },
-    "ThorlabsMFFEntry": {
+    "ThorlabsMFFControllerEntry": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -136,7 +217,7 @@
           "type": "string"
         },
         "type": {
-          "const": "fastcs_thorlabs_mff.ThorlabsMFF",
+          "const": "fastcs_thorlabs_mff.ThorlabsMFFController",
           "title": "Type",
           "type": "string"
         },
@@ -174,7 +255,7 @@
         "id",
         "type"
       ],
-      "title": "ThorlabsMFFEntry",
+      "title": "ThorlabsMFFControllerEntry",
       "type": "object"
     }
   },
@@ -182,7 +263,7 @@
   "properties": {
     "controllers": {
       "items": {
-        "$ref": "#/$defs/ThorlabsMFFEntry"
+        "$ref": "#/$defs/ThorlabsMFFControllerEntry"
       },
       "title": "Controllers",
       "type": "array"
@@ -206,6 +287,6 @@
     "controllers",
     "transport"
   ],
-  "title": "ThorlabsMFF",
+  "title": "ThorlabsMFFController",
   "type": "object"
 }

@@ -41,13 +41,6 @@ def test_baud_custom():
     assert s.baud == 9600
 
 
-def test_as_connection_settings():
-    s = SerialSettings(port="/dev/ttyUSB0", baud=9600)
-    cs = s.as_connection_settings()
-    assert cs.port == "/dev/ttyUSB0"
-    assert cs.baud == 9600
-
-
 def test_sim_port():
     s = SerialSettings(port="SIM")
     assert s.port == "SIM"

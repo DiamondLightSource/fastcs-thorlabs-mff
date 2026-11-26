@@ -1,8 +1,8 @@
 # yaml-language-server: $schema=schema.json
 controllers:
   - id: TEST
-    type: fastcs_thorlabs_mff.ThorlabsMFF
-    port: "port"
+    type: fastcs_thorlabs_mff.ThorlabsMFFController
+    port: SIM
 transport:
   - epicsca: {}
     gui:
