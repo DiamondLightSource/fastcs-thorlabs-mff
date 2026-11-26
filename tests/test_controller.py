@@ -5,6 +5,7 @@ import pytest_asyncio
 
 from fastcs_thorlabs_mff.config import SerialSettings
 from fastcs_thorlabs_mff.controller import ThorlabsMFFController
+from fastcs_thorlabs_mff.sim import SimMFFStream
 
 
 @pytest_asyncio.fixture
@@ -57,3 +58,24 @@ async def test_blink_led(mff: ThorlabsMFFController):
     await mff.blink_led()
     await mff.update_status()
     assert mff.moving.get() is False
+
+
+@pytest.mark.asyncio
+async def test_status_scan_survives_comms_errors(mff: ThorlabsMFFController):
+    """A bad reply must not stop fastcs's periodic status scan."""
+    _, periodic_scans, _ = mff.create_api_and_tasks()
+    scan_task = asyncio.create_task(periodic_scans[0]())
+    try:
+        await asyncio.sleep(0.3)
+        sim = mff.connection.stream
+        assert isinstance(sim, SimMFFStream)
+        sim.inject(b"\xff")  # stray byte misaligns the next reply
+        await asyncio.sleep(0.3)
+        await mff.position.put(True)
+        for _ in range(40):
+            if (mff.position.get(), mff.moving.get()) == (True, False):
+                break
+            await asyncio.sleep(0.1)
+        assert (mff.position.get(), mff.moving.get()) == (True, False)
+    finally:
+        scan_task.cancel()

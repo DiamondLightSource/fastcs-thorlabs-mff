@@ -48,26 +48,19 @@ class Stream(Protocol):
 class APTConnection:
     """APT transactions over the stream returned by `open_stream`, one at a time."""
 
+    stream: Stream
+
     def __init__(self, open_stream: Callable[[], Stream]):
         self._open_stream = open_stream
-        self._stream: Stream | None = None
         self._lock = asyncio.Lock()
 
-    @property
-    def stream(self) -> Stream:
-        if self._stream is None:
-            raise ConnectionError("Need to call connect() before using APTConnection")
-        return self._stream
-
     async def connect(self) -> None:
-        self._stream = self._open_stream()
-        self._stream.reset_input_buffer()
+        self.stream = self._open_stream()
+        self.stream.reset_input_buffer()
 
     async def close(self) -> None:
         async with self._lock:
-            if self._stream is not None:
-                self._stream.close()
-                self._stream = None
+            self.stream.close()
 
     async def send(self, message: APTMessage) -> None:
         async with self._lock:

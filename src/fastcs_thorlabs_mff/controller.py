@@ -10,7 +10,7 @@ from fastcs.datatypes import Bool, Int, String
 from fastcs.methods import command, scan
 
 from fastcs_thorlabs_mff.config import SerialSettings
-from fastcs_thorlabs_mff.connection import READ_TIMEOUT, APTConnection
+from fastcs_thorlabs_mff.connection import READ_TIMEOUT, APTConnection, APTError
 from fastcs_thorlabs_mff.constants import CHANNEL, MsgId
 from fastcs_thorlabs_mff.io import MFFPositionIO, MFFPositionIORef
 from fastcs_thorlabs_mff.messages import APTMessage, Info, Status
@@ -47,6 +47,7 @@ class ThorlabsMFFController(Controller):
                 )
             )
 
+        self._status_ok = True
         super().__init__(ios=[MFFPositionIO(self.connection)])
 
     async def connect(self) -> None:
@@ -61,10 +62,20 @@ class ThorlabsMFFController(Controller):
 
     @scan(0.2)
     async def update_status(self) -> None:
-        reply = await self.connection.query(
-            APTMessage(MsgId.MOT_REQ_STATUSBITS, CHANNEL),
-            MsgId.MOT_GET_STATUSBITS,
-        )
+        try:
+            reply = await self.connection.query(
+                APTMessage(MsgId.MOT_REQ_STATUSBITS, CHANNEL),
+                MsgId.MOT_GET_STATUSBITS,
+            )
+        except APTError as e:
+            if self._status_ok:
+                logger.warning("Status query failed, retrying every scan: %s", e)
+                self._status_ok = False
+            return
+        if not self._status_ok:
+            logger.info("Status query succeeded again")
+            self._status_ok = True
+
         status = Status.from_data(reply.data)
         await self.moving.update(status.moving)
         if status.position is not None:

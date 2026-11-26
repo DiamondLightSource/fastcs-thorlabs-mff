@@ -83,10 +83,3 @@ async def test_missing_reply_times_out_and_releases_lock(sim_and_connection, par
     with pytest.raises(APTError, match="Timed out"):
         await connection.query(APTMessage(0), MsgId.MOT_GET_STATUSBITS)  # no reply
     assert await query_status(connection) == STATUS_AT_1
-
-
-@pytest.mark.asyncio
-async def test_use_before_connect_raises():
-    connection = APTConnection(SimMFFStream)
-    with pytest.raises(ConnectionError):
-        await connection.send(APTMessage(MsgId.MOD_IDENTIFY))
