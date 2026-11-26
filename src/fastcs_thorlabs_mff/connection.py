@@ -10,9 +10,11 @@ buffer is flushed so the next query starts at a message boundary.
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import Callable
 from typing import Protocol
+
+from fastcs.logging import logger as _logger
+from fastcs.tracer import Tracer
 
 from fastcs_thorlabs_mff.constants import (
     CHANNEL,
@@ -23,7 +25,7 @@ from fastcs_thorlabs_mff.constants import (
 )
 from fastcs_thorlabs_mff.messages import APTMessage
 
-logger = logging.getLogger(__name__)
+logger = _logger.bind(logger_name=__name__)
 
 READ_TIMEOUT = 0.5
 """Seconds to wait for each read before treating a reply as missing."""
@@ -45,12 +47,13 @@ class Stream(Protocol):
     def close(self) -> None: ...
 
 
-class APTConnection:
+class APTConnection(Tracer):
     """APT transactions over the stream returned by `open_stream`, one at a time."""
 
     stream: Stream
 
     def __init__(self, open_stream: Callable[[], Stream]):
+        super().__init__()
         self._open_stream = open_stream
         self._lock = asyncio.Lock()
 
@@ -65,23 +68,32 @@ class APTConnection:
     async def send(self, message: APTMessage) -> None:
         async with self._lock:
             await self.stream.write_async(message.to_bytes())
+            self.log_event("Sent command", command=message.to_bytes().hex(" "))
 
     async def query(self, message: APTMessage, reply_id: int) -> APTMessage:
         """Send `message` and return the first reply with ID `reply_id`."""
         async with self._lock:
             try:
                 await self.stream.write_async(message.to_bytes())
-                return await self._read_reply(reply_id)
+                reply = await self._read_reply(reply_id)
             except APTError:
                 self.stream.reset_input_buffer()
                 raise
+            self.log_event(
+                "Received query response",
+                query=message.to_bytes().hex(" "),
+                response=reply.to_bytes().hex(" "),
+            )
+            return reply
 
     async def _read_reply(self, reply_id: int) -> APTMessage:
         for _ in range(MAX_DISCARDED):
             reply = await self._read_message()
             if reply.msg_id == reply_id:
                 return reply
-            logger.debug("Discarding unexpected APT message 0x%04X", reply.msg_id)
+            logger.debug(
+                "Discarding unexpected message", msg_id=f"0x{reply.msg_id:04X}"
+            )
         raise APTError(f"No reply with ID 0x{reply_id:04X} after {MAX_DISCARDED} msgs")
 
     async def _read_message(self) -> APTMessage:
