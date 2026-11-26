@@ -2,23 +2,24 @@ from __future__ import annotations
 
 import logging
 
+import aioserial
 from fastcs import ONCE
 from fastcs.attributes import AttrR, AttrRW
 from fastcs.controllers import Controller
 from fastcs.datatypes import Bool, Int, String
 from fastcs.methods import command, scan
 
-from fastcs_thorlabs_mff import protocol
 from fastcs_thorlabs_mff.config import SerialSettings
-from fastcs_thorlabs_mff.connection import APTConnection, serial_stream
+from fastcs_thorlabs_mff.connection import READ_TIMEOUT, APTConnection
+from fastcs_thorlabs_mff.constants import CHANNEL, MsgId
 from fastcs_thorlabs_mff.io import MFFPositionIO, MFFPositionIORef
-from fastcs_thorlabs_mff.protocol import MsgId
+from fastcs_thorlabs_mff.messages import APTMessage, Info, Status
 from fastcs_thorlabs_mff.sim import SimMFFStream
 
 logger = logging.getLogger(__name__)
 
 
-class ThorlabsMFF(Controller):
+class ThorlabsMFFController(Controller):
     position = AttrRW(
         Bool(),
         io_ref=MFFPositionIORef(),
@@ -32,42 +33,49 @@ class ThorlabsMFF(Controller):
     hardware_version = AttrR(Int())
 
     def __init__(self, serial_settings: SerialSettings):
-        self._serial_settings = serial_settings.as_connection_settings()
-        port = self._serial_settings.port
+        port, baud = serial_settings.port, serial_settings.baud
+        assert port is not None  # SerialSettings validation guarantees this
 
         if port.upper() == "SIM":
             logger.info("Using simulated serial connection")
-            self.conn = APTConnection(SimMFFStream)
+            self.connection = APTConnection(SimMFFStream)
         else:
             logger.info("Using serial connection on port %s", port)
-            self.conn = APTConnection(serial_stream(port, self._serial_settings.baud))
+            self.connection = APTConnection(
+                lambda: aioserial.AioSerial(
+                    port=port, baudrate=baud, timeout=READ_TIMEOUT
+                )
+            )
 
-        super().__init__(ios=[MFFPositionIO(self.conn)])
+        super().__init__(ios=[MFFPositionIO(self.connection)])
 
     async def connect(self) -> None:
         logger.info("Connecting to Thorlabs MFF")
-        await self.conn.connect()
+        await self.connection.connect()
         await super().connect()
         logger.info("Connected to Thorlabs MFF")
 
     async def disconnect(self) -> None:
         logger.info("Disconnecting from Thorlabs MFF")
-        await self.conn.close()
+        await self.connection.close()
 
     @scan(0.2)
     async def update_status(self) -> None:
-        reply = await self.conn.query(
-            protocol.req_status_bits(), MsgId.MOT_GET_STATUSBITS
+        reply = await self.connection.query(
+            APTMessage(MsgId.MOT_REQ_STATUSBITS, CHANNEL),
+            MsgId.MOT_GET_STATUSBITS,
         )
-        status = protocol.decode_status(reply.data)
+        status = Status.from_data(reply.data)
         await self.moving.update(status.moving)
         if status.position is not None:
             await self.position.update(status.position)
 
     @scan(ONCE)
     async def update_info(self) -> None:
-        reply = await self.conn.query(protocol.req_info(), MsgId.HW_GET_INFO)
-        info = protocol.decode_info(reply.data)
+        reply = await self.connection.query(
+            APTMessage(MsgId.HW_REQ_INFO), MsgId.HW_GET_INFO
+        )
+        info = Info.from_data(reply.data)
         await self.model.update(info.model)
         await self.device_type.update(info.device_type)
         await self.serial_no.update(info.serial_no)
@@ -77,4 +85,4 @@ class ThorlabsMFF(Controller):
     @command()
     async def blink_led(self) -> None:
         logger.info("Sending blink LED command")
-        await self.conn.send(protocol.identify())
+        await self.connection.send(APTMessage(MsgId.MOD_IDENTIFY))

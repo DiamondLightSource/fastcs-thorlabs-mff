@@ -1,21 +1,25 @@
 import pytest
 
-from fastcs_thorlabs_mff import protocol
-from fastcs_thorlabs_mff.protocol import APTMessage, Status, StatusBits
+from fastcs_thorlabs_mff.constants import CHANNEL, DEVICE, HOST, MsgId, StatusBits
+from fastcs_thorlabs_mff.messages import APTMessage, Info, Status
 
 
 @pytest.mark.parametrize(
     "message, expected",
     [
-        (protocol.identify(), b"\x23\x02\x00\x00\x50\x01"),
-        (protocol.req_info(), b"\x05\x00\x00\x00\x50\x01"),
-        (protocol.req_status_bits(), b"\x29\x04\x01\x00\x50\x01"),
-        (protocol.move_jog(False), b"\x6a\x04\x01\x01\x50\x01"),
-        (protocol.move_jog(True), b"\x6a\x04\x01\x02\x50\x01"),
+        (APTMessage(MsgId.MOD_IDENTIFY), b"\x23\x02\x00\x00\x50\x01"),
+        (APTMessage(MsgId.HW_REQ_INFO), b"\x05\x00\x00\x00\x50\x01"),
+        (
+            APTMessage(MsgId.MOT_REQ_STATUSBITS, CHANNEL),
+            b"\x29\x04\x01\x00\x50\x01",
+        ),
+        (APTMessage(MsgId.MOT_MOVE_JOG, CHANNEL, 1), b"\x6a\x04\x01\x01\x50\x01"),
+        (APTMessage(MsgId.MOT_MOVE_JOG, CHANNEL, 2), b"\x6a\x04\x01\x02\x50\x01"),
     ],
 )
 def test_commands(message, expected):
-    assert message == expected
+    """Encoding of each command the driver sends, against the APT spec."""
+    assert message.to_bytes() == expected
 
 
 @pytest.mark.parametrize(
@@ -35,19 +39,19 @@ def test_commands(message, expected):
         (StatusBits.POSITION_1 | StatusBits.POSITION_2, Status(None, moving=True)),
     ],
 )
-def test_decode_status(bits, expected):
+def test_status_from_data(bits, expected):
     data = (1).to_bytes(2, "little") + int(bits).to_bytes(4, "little")
-    assert protocol.decode_status(data) == expected
+    assert Status.from_data(data) == expected
 
 
-def test_decode_info():
+def test_info_from_data():
     data = bytearray(84)
     data[0:4] = (37000001).to_bytes(4, "little")
     data[4:12] = b"MFF101\x00\x00"
     data[12:14] = (0x1007).to_bytes(2, "little")
     data[14:18] = (0x010203).to_bytes(4, "little")
     data[78:80] = (3).to_bytes(2, "little")
-    assert protocol.decode_info(bytes(data)) == protocol.Info(
+    assert Info.from_data(bytes(data)) == Info(
         serial_no=37000001,
         model="MFF101",
         device_type=0x1007,
@@ -59,12 +63,16 @@ def test_decode_info():
 @pytest.mark.parametrize(
     "message",
     [
-        APTMessage(protocol.MsgId.MOT_MOVE_JOG, 1, 2),
-        APTMessage(protocol.MsgId.HW_GET_INFO, dest=1, source=0x50, data=bytes(84)),
+        APTMessage(MsgId.MOT_MOVE_JOG, 1, 2),
+        APTMessage(MsgId.HW_GET_INFO, dest=HOST, source=DEVICE, data=bytes(84)),
     ],
 )
 def test_message_round_trip(message):
     raw = message.to_bytes()
     header, data = raw[:6], raw[6:]
-    assert protocol.data_length(header) == len(message.data)
+    assert APTMessage.parse_header(header) == (
+        message.msg_id,
+        message.dest,
+        len(message.data),
+    )
     assert APTMessage.from_header(header, data) == message

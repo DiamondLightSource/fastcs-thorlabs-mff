@@ -1,4 +1,9 @@
-"""Byte-level simulation of a Thorlabs MFF on a serial port."""
+"""Byte-level simulation of a Thorlabs MFF on a serial port.
+
+Moves take `move_time` seconds, during which the status bits report motion and neither
+position, and finish with an unsolicited MOT_MOVE_COMPLETED, as the APT protocol
+specifies for MOT_MOVE_JOG.
+"""
 
 from __future__ import annotations
 
@@ -7,15 +12,15 @@ import logging
 import struct
 
 from fastcs_thorlabs_mff.connection import READ_TIMEOUT
-from fastcs_thorlabs_mff.protocol import (
+from fastcs_thorlabs_mff.constants import (
     CHANNEL,
     DEVICE,
     HEADER_SIZE,
     HOST,
-    APTMessage,
     MsgId,
     StatusBits,
 )
+from fastcs_thorlabs_mff.messages import APTMessage
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +36,7 @@ def _reply(msg_id: MsgId, data: bytes) -> bytes:
 
 
 class SimMFFStream:
-    """Stands in for `aioserial.AioSerial` connected to an MFF.
-
-    Moves take `move_time` seconds, during which the status bits report motion and
-    neither position, and finish with an unsolicited MOT_MOVE_COMPLETED, as the APT
-    protocol specifies for MOT_MOVE_JOG.
-
-    :param move_time: Seconds a move between positions takes
-    :param read_timeout: Seconds `read_async` waits before returning a short read
-    """
+    """Stands in for `aioserial.AioSerial` connected to an MFF."""
 
     def __init__(self, move_time: float = 0.5, read_timeout: float = READ_TIMEOUT):
         self.move_time = move_time
@@ -51,7 +48,7 @@ class SimMFFStream:
         self._rx_changed = asyncio.Event()
 
     def inject(self, data: bytes) -> None:
-        """Queue raw bytes for the host to read, e.g. noise or unsolicited messages"""
+        """Queue raw bytes for the host to read, e.g. noise or unsolicited messages."""
         self._rx += data
         self._rx_changed.set()
 

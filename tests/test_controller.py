@@ -4,12 +4,12 @@ import pytest
 import pytest_asyncio
 
 from fastcs_thorlabs_mff.config import SerialSettings
-from fastcs_thorlabs_mff.controllers import ThorlabsMFF
+from fastcs_thorlabs_mff.controller import ThorlabsMFFController
 
 
 @pytest_asyncio.fixture
 async def mff():
-    controller = ThorlabsMFF(SerialSettings(port="SIM"))
+    controller = ThorlabsMFFController(SerialSettings(port="SIM"))
     controller.post_initialise()
     await controller.connect()
     yield controller
@@ -17,7 +17,7 @@ async def mff():
 
 
 @pytest.mark.asyncio
-async def test_info(mff: ThorlabsMFF):
+async def test_info(mff: ThorlabsMFFController):
     await mff.update_info()
     assert mff.model.get() == "MFF101"
     assert mff.device_type.get() == 0x1007
@@ -27,7 +27,7 @@ async def test_info(mff: ThorlabsMFF):
 
 
 @pytest.mark.asyncio
-async def test_move_happy_path(mff: ThorlabsMFF):
+async def test_move_happy_path(mff: ThorlabsMFFController):
     await mff.update_status()
     assert (mff.position.get(), mff.moving.get()) == (False, False)
 
@@ -53,7 +53,7 @@ async def test_move_happy_path(mff: ThorlabsMFF):
 
 
 @pytest.mark.asyncio
-async def test_blink_led(mff: ThorlabsMFF):
+async def test_blink_led(mff: ThorlabsMFFController):
     await mff.blink_led()
     await mff.update_status()
     assert mff.moving.get() is False
