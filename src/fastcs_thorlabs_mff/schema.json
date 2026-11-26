@@ -222,28 +222,8 @@
           "type": "string"
         },
         "port": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Port"
-        },
-        "port_env": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Port Env"
+          "title": "Port",
+          "type": "string"
         },
         "baud": {
           "default": 115200,
@@ -253,7 +233,8 @@
       },
       "required": [
         "id",
-        "type"
+        "type",
+        "port"
       ],
       "title": "ThorlabsMFFControllerEntry",
       "type": "object"

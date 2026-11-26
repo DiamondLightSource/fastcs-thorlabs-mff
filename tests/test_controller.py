@@ -2,15 +2,15 @@ import asyncio
 
 import pytest
 import pytest_asyncio
+from fastcs.connections import SerialConnectionSettings
 
-from fastcs_thorlabs_mff.config import SerialSettings
 from fastcs_thorlabs_mff.controller import ThorlabsMFFController
 from fastcs_thorlabs_mff.sim import SimMFFStream
 
 
 @pytest_asyncio.fixture
 async def mff():
-    controller = ThorlabsMFFController(SerialSettings(port="SIM"))
+    controller = ThorlabsMFFController(SerialConnectionSettings(port="SIM"))
     controller.post_initialise()
     await controller.connect()
     yield controller
