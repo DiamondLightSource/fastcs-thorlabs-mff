@@ -3,12 +3,12 @@ from __future__ import annotations
 import aioserial
 from fastcs import ONCE
 from fastcs.attributes import AttrR, AttrRW
+from fastcs.connections import SerialConnectionSettings
 from fastcs.controllers import Controller
 from fastcs.datatypes import Bool, Int, String
 from fastcs.logging import logger as _logger
 from fastcs.methods import command, scan
 
-from fastcs_thorlabs_mff.config import SerialSettings
 from fastcs_thorlabs_mff.connection import READ_TIMEOUT, APTConnection, APTError
 from fastcs_thorlabs_mff.constants import CHANNEL, MsgId
 from fastcs_thorlabs_mff.io import MFFPositionIO, MFFPositionIORef
@@ -31,9 +31,8 @@ class ThorlabsMFFController(Controller):
     firmware_version = AttrR(Int())
     hardware_version = AttrR(Int())
 
-    def __init__(self, serial_settings: SerialSettings):
+    def __init__(self, serial_settings: SerialConnectionSettings):
         port, baud = serial_settings.port, serial_settings.baud
-        assert port is not None  # SerialSettings validation guarantees this
 
         if port.upper() == "SIM":
             logger.info("Using simulated device")
